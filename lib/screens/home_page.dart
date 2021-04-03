@@ -15,6 +15,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   var _taskController;
   List<Task> _tasks;
+  List<bool> _tasksDone;
 
   void _getTask() async {
     _tasks = [];
@@ -25,6 +26,8 @@ class _HomeScreenState extends State<HomeScreen> {
       _tasks.add(Task.fromMap(json.decode(d)));
     }
     print(_tasks);
+
+    _tasksDone = List.generate(_tasks.length, (index) => false);
     setState(() {});
   }
 
@@ -39,6 +42,25 @@ class _HomeScreenState extends State<HomeScreen> {
     prefs.setString('task', json.encode(list));
     _taskController.text = "";
     Navigator.of(context).pop();
+    _getTask();
+  }
+
+  void updatePendingTaskList() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<Task> pendingList = [];
+    for (var i = 0; i < _tasks.length; i++) {
+      if (!_tasksDone[i]) pendingList.add(_tasks[i]);
+    }
+    var pendingListEncoded = List.generate(
+      pendingList.length,
+      (i) => json.encode(
+        pendingList[i].getMap(),
+      ),
+    );
+
+    prefs.setString('task', json.encode(pendingListEncoded));
+
+    _getTask();
   }
 
   @override
@@ -60,6 +82,26 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        actions: [
+          IconButton(
+              icon: Icon(
+                Icons.save,
+                color: Colors.greenAccent,
+              ),
+              onPressed: () {
+                updatePendingTaskList();
+              }),
+          IconButton(
+              icon: Icon(
+                Icons.delete,
+                color: Colors.redAccent,
+              ),
+              onPressed: () async {
+                SharedPreferences prefs = await SharedPreferences.getInstance();
+                prefs.setString('task', json.encode([]));
+                _getTask();
+              }),
+        ],
         title: Text("Daily Task Manager"),
       ),
       body: (_tasks == null)
@@ -80,7 +122,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         padding: const EdgeInsets.only(left: 10.0),
                         alignment: Alignment.centerLeft,
                         decoration: BoxDecoration(
-                          color: Colors.blueAccent,
                           borderRadius: BorderRadius.circular(5.0),
                           border: Border.all(
                             color: Colors.black,
@@ -93,13 +134,16 @@ class _HomeScreenState extends State<HomeScreen> {
                             Text(
                               e.task,
                               style: TextStyle(
-                                  color: Colors.white,
+                                  color: Colors.black,
                                   fontWeight: FontWeight.bold),
                             ),
                             Checkbox(
-                              value: false,
-                              onChanged: (value) {
-                                print(value);
+                              value: _tasksDone[_tasks.indexOf(e)],
+                              key: GlobalKey(),
+                              onChanged: (val) {
+                                setState(() {
+                                  _tasksDone[_tasks.indexOf(e)] = val;
+                                });
                               },
                             ),
                           ],
@@ -153,20 +197,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 SizedBox(height: 20.0),
-                Expanded(
-                  flex: 1,
-                  child: Row(
-                    children: [
-                      ElevatedButton(
-                        onPressed: () => _taskController.text = "",
-                        child: Text("RESET"),
-                      ),
-                      ElevatedButton(
-                        onPressed: () => saveDate(),
-                        child: Text("ADD"),
-                      ),
-                    ],
-                  ),
+                Row(
+                  children: [
+                    ElevatedButton(
+                      onPressed: () => _taskController.text = "",
+                      child: Text("RESET"),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => saveDate(),
+                      child: Text("ADD"),
+                    ),
+                  ],
                 )
               ],
             ),
