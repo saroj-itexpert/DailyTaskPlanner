@@ -14,6 +14,18 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   var _taskController;
+  List<Task> _tasks;
+
+  void _getTask() async {
+    _tasks = [];
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String tasks = prefs.getString("task");
+    List list = (tasks == null) ? [] : json.decode(tasks);
+    for (dynamic d in list) {
+      _tasks.add(Task.fromMap(json.decode(d)));
+    }
+    print(_tasks);
+  }
 
   void saveDate() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -25,11 +37,13 @@ class _HomeScreenState extends State<HomeScreen> {
     print(list);
     prefs.setString('task', json.encode(list));
     _taskController.text = "";
+    Navigator.of(context).pop();
   }
 
   @override
   void initState() {
     super.initState();
+    _getTask();
     _taskController = TextEditingController();
   }
 
@@ -45,9 +59,24 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: Text("Daily Task Manager"),
       ),
-      body: Center(
-        child: Text("No Tasks Added Yet!"),
-      ),
+      body: (_tasks == null)
+          ? Center(
+              child: Text("No Tasks Added Yet!"),
+            )
+          : Column(
+              children: _tasks
+                  .map(
+                    (e) => Container(
+                      height: 70.0,
+                      width: MediaQuery.of(context).size.width,
+                      child: Text(
+                        e.task,
+                        style: TextStyle(color: Colors.yellow),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.add, color: Colors.white),
         backgroundColor: Colors.blue,
